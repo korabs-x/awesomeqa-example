@@ -1,6 +1,6 @@
 from app.repositories.ticket_repository import TicketRepository
 import uvicorn
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 
@@ -23,6 +23,12 @@ async def get_tickets(
     tickets = ticket_repository.get_tickets(limit)
     return JSONResponse(tickets, status_code=200)
 
+@app.delete("/tickets/{ticket_id}")
+async def delete_ticket(ticket_id: str, ticket_repository: TicketRepository = Depends(lambda: ticket_repository)):
+    success = ticket_repository.delete_ticket(ticket_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"message": "Ticket deleted"}
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=5001, reload=True)
