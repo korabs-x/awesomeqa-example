@@ -3,9 +3,17 @@ from typing import Optional
 
 
 class TicketRepository:
-    def __init__(self, filepath: str):
-        with open(filepath) as json_file:
-            self.data = json.load(json_file)
+    def __init__(self, filepath: Optional[str] = None):
+        self.data = {"tickets": []}
+        if filepath:
+            try:
+                with open(filepath) as json_file:
+                    self.data = json.load(json_file)
+            except FileNotFoundError:
+                pass
+
+    def set_mock_data(self, mock_data):
+        self.data = mock_data
 
     def get_tickets(self, limit: Optional[int] = None) -> list[dict]:
         return self.data["tickets"][:limit]
