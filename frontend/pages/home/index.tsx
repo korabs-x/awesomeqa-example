@@ -3,6 +3,7 @@ import { NextPage } from "next";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
+import Link from 'next/link';
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
@@ -74,35 +75,37 @@ const Home: NextPage = () => {
 
           {/* Tickets Button */}
           <Grid item>
-            <Button
-                variant="contained"
-                onClick={() => console.log('Tickets clicked')}
-                sx={{
-                  ...ButtonStyle,
-                  backgroundColor: '#1C1C1F',
-                  '&:hover': {
-                    backgroundColor: '#333',
-                  },
-                }}
-              >
-              {/* Icon container */}
-              <Box
-                sx={{
-                  ...iconContainer
-                }}
-              >
-                <SupportAgentOutlinedIcon sx={{ color: 'white' }} />
-              </Box>
-              {/* Button text */}
-              <Box
-                component="span"
-                sx={{
-                  color: 'white',
-                }}
-              >
-                Tickets
-              </Box>
-            </Button>
+            <Link href="/tickets" passHref>
+              <Button
+                  variant="contained"
+                  onClick={() => console.log('Tickets clicked')}
+                  sx={{
+                    ...ButtonStyle,
+                    backgroundColor: '#1C1C1F',
+                    '&:hover': {
+                      backgroundColor: '#333',
+                    },
+                  }}
+                >
+                {/* Icon container */}
+                <Box
+                  sx={{
+                    ...iconContainer
+                  }}
+                >
+                  <SupportAgentOutlinedIcon sx={{ color: 'white' }} />
+                </Box>
+                {/* Button text */}
+                <Box
+                  component="span"
+                  sx={{
+                    color: 'white',
+                  }}
+                >
+                  Tickets
+                </Box>
+              </Button>
+            </Link>
           </Grid>
 
           {/* FAQ Insights Button */}
