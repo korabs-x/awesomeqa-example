@@ -8,8 +8,16 @@ app = FastAPI()
 
 TICKET_FILEPATH = "../data/awesome_tickets.json"
 
+# Singleton pattern for TicketRepository
+# So once instance of ticket_repository exists in
+# life cycle of a server instance
+ticket_repository_instance = None
+
 def get_ticket_repository() -> TicketRepository:
-    return TicketRepository(filepath=TICKET_FILEPATH)
+    global ticket_repository_instance
+    if ticket_repository_instance is None:
+        ticket_repository_instance = TicketRepository(filepath=TICKET_FILEPATH)
+    return ticket_repository_instance
 
 @app.get("/healthz")
 async def root():
