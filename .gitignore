@@ -138,3 +138,5 @@ dist
 .idea/
 
 __pycache__
+jest.config.js
+.babelrc
