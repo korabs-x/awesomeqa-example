@@ -20,8 +20,10 @@ class TicketRepository:
         self.tickets = mock_data["tickets"]
         self.messages = {msg["id"]: msg for msg in mock_data["messages"]}
 
-    def get_tickets(self, limit: Optional[int] = None) -> list[dict]:
-        return self.tickets[:limit]
+    def get_tickets(self, page: int = 1, limit: int = 20) -> list[dict]:
+        start = (page - 1) * limit
+        end = start + limit
+        return self.tickets[start:end]
     
     def get_ticket_with_message(self, ticket_id: str) -> dict:
         ticket = next((t for t in self.tickets if t["id"] == ticket_id), None)

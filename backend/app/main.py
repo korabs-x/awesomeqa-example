@@ -36,10 +36,11 @@ async def root():
 
 @app.get("/tickets")
 async def get_tickets(
-    limit: int = 20,
-    ticket_repository: TicketRepository = Depends(get_ticket_repository),
-):
-    tickets = ticket_repository.get_tickets(limit)
+        page: int = 1, 
+        limit: int = 20,
+        ticket_repository: TicketRepository = Depends(get_ticket_repository),
+    ):
+    tickets = ticket_repository.get_tickets(page=page, limit=limit)
     return JSONResponse(tickets, status_code=200)
 
 @app.get("/tickets/{ticket_id}")

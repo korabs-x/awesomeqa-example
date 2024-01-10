@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { List, ListItem, Card, IconButton, Typography, Avatar, ListItemText, CircularProgress, Box } from '@mui/material';
 import { styled } from '@mui/system';
 import SearchIcon from '@mui/icons-material/Search';
+import ArrowDropUpOutlinedIcon from '@mui/icons-material/ArrowDropUpOutlined';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import SentimentVerySatisfiedOutlinedIcon from '@mui/icons-material/SentimentVerySatisfiedOutlined';
 import Button from '@mui/material/Button';
@@ -24,10 +25,11 @@ const TicketsPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         setLoading(true);
-        fetch('http://localhost:5001/tickets')
+        fetch(`http://localhost:5001/tickets?page=${page}&limit=20`)
         .then(response => response.json())
         .then(tickets => {
             // Fetch message data for each ticket
@@ -47,7 +49,7 @@ const TicketsPage = () => {
             setError('Failed to fetch tickets');
             setLoading(false);
         });
-    }, []);
+    }, [page]);
 
     useEffect(() => {
         if (selectedTicketId) {
@@ -73,6 +75,14 @@ const TicketsPage = () => {
     if (error) {
         return <Typography color="error">{error}</Typography>;
     }
+
+    const handleNextPage = () => {
+        setPage((prevPage) => prevPage + 1);
+      };
+      
+      const handlePreviousPage = () => {
+        setPage((prevPage) => Math.max(prevPage - 1, 1));
+      };
 
     const handleListItemClick = (ticketId) => {
         setSelectedTicketId(ticketId);
@@ -140,7 +150,7 @@ const TicketsPage = () => {
                     </Button>
                     <Button 
                       variant="contained" 
-                      color="secondary"
+                      color="error"
                       startIcon={<DeleteIcon />}
                       onClick={handleRemoveTicket}
                     >
@@ -207,7 +217,7 @@ const TicketsPage = () => {
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             {/* Sidebar */}
-            <div style={{ width: '30%', backgroundColor: 'black', color: 'white', overflowY: 'auto' }}>
+            <div style={{ width: '30%', backgroundColor: 'black', color: 'white', display: 'flex', flexDirection: 'column' }}>
                 <Box display="flex" alignItems="center" padding={2}>
                     <TextField
                         fullWidth
@@ -225,33 +235,40 @@ const TicketsPage = () => {
                         }}
                     />
                 </Box>
-                <List style={{ overflowY: 'auto', paddingBottom: 48 }}>
-                    {tickets.map(ticket => (
-                        <ListItem
-                        key={ticket.id}
-                        onClick={() => handleListItemClick(ticket.id)}
-                        style={{
-                            backgroundColor: selectedTicketId === ticket.id ? '#353535' : 'transparent',
-                            alignItems: 'flex-start'
-                        }}
-                        >
-                    <Avatar src={ticket.message.author.avatar_url} alt={ticket.message.author.name} />
-                    <Box sx={{ ml: 2 }}>
-                        <ListItemText
-                            primary={ticket.message.author.name}
-                            secondary={truncateMessage(ticket.message.content)}
-                            primaryTypographyProps={{ fontWeight: 'bold' }}
-                        />
+                {page > 1 && (
+                    <Box display="flex" justifyContent="center" pt={2}>
+                        <IconButton onClick={handlePreviousPage}>
+                            <ArrowDropUpOutlinedIcon />
+                        </IconButton>
                     </Box>
-                    </ListItem>
-                ))}
-                <Box display="flex" justifyContent="center" position="sticky" bottom={0} pb={2}>
-                    <IconButton>
+                )}
+                <List style={{ overflowY: 'auto', flexGrow: 1 }}>
+                {tickets.map(ticket => (
+                    <ListItem
+                    key={ticket.id}
+                    onClick={() => handleListItemClick(ticket.id)}
+                    style={{
+                        backgroundColor: selectedTicketId === ticket.id ? '#353535' : 'transparent',
+                        alignItems: 'flex-start'
+                    }}
+                    >
+                <Avatar src={ticket.message.author.avatar_url} alt={ticket.message.author.name} />
+                <Box sx={{ ml: 2 }}>
+                    <ListItemText
+                        primary={ticket.message.author.name}
+                        secondary={truncateMessage(ticket.message.content)}
+                        primaryTypographyProps={{ fontWeight: 'bold' }}
+                    />
+                </Box>
+                </ListItem>
+            ))}
+                <Box display="flex" justifyContent="center" alignItems="center">
+                    <IconButton onClick={handleNextPage}>
                         <ArrowDropDownIcon />
                     </IconButton>
                 </Box>
-                </List>
-            </div>
+            </List>
+        </div>
 
       {/* Main Content */}
       <div style={{ width: '70%' }}>
