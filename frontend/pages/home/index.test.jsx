@@ -2,24 +2,18 @@ import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Home from './index';
-import { useRouter } from 'next/router';
 
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(),
-}));
+jest.mock('next/link', () => {
+  return ({ children }) => {
+    return children;
+  };
+});
 
 describe('Home', () => {
   let consoleSpy;
 
   beforeEach(() => {
     consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-    useRouter.mockImplementation(() => ({
-      push: jest.fn(),
-      route: '/',
-      pathname: '',
-      query: '',
-      asPath: '',
-    }));
   });
 
   afterEach(() => {
@@ -62,4 +56,3 @@ describe('Home', () => {
     expect(consoleSpy).toHaveBeenCalledWith('FAQ Insights button');
   });
 });
-
