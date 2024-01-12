@@ -1,21 +1,130 @@
 import React, { useState, useEffect } from 'react';
-import { List, ListItem, Card, IconButton, Typography, Avatar, ListItemText, CircularProgress, Box } from '@mui/material';
-import { styled } from '@mui/system';
-import SearchIcon from '@mui/icons-material/Search';
-import ArrowDropUpOutlinedIcon from '@mui/icons-material/ArrowDropUpOutlined';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import SentimentVerySatisfiedOutlinedIcon from '@mui/icons-material/SentimentVerySatisfiedOutlined';
-import Button from '@mui/material/Button';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import { 
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
+    Modal, Box, Typography, Avatar, Button, IconButton, TablePagination, List, ListItem, ListItemText
+} from '@mui/material';
+import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TextField from '@mui/material/TextField';
+import SearchIcon from '@mui/icons-material/Search';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogTitle from '@mui/material/DialogTitle';
 
-const truncateMessage = (message, limit = 10) => {
+const truncateMessage = (message, limit = 20) => {
     const words = message.split(' ');
     if (words.length > limit) {
       return words.slice(0, limit).join(' ') + '...';
     }
     return message;
+};
+
+const TicketModal = ({ open, onClose, ticket, contextMessages, onRemoveTicket, onConfirmRemoveTicket, getStatusStyles }) => {
+    if (!ticket || !ticket.message || !ticket.message.author) return null;
+  
+    const originalMessageId = ticket.msg_id;
+    const originalMessage = contextMessages.find(
+        (msg) => msg.id === originalMessageId
+    );
+  
+    const modalStyle = {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '75%',
+      bgcolor: 'background.paper',
+      boxShadow: 24,
+      p: 4,
+      overflow: 'auto',
+      maxHeight: '90%',
+    };
+  
+    const getBackgroundColor = (msgId) => {
+      return msgId === originalMessageId ? '#656565' : '#282828';
+    };
+  
+    return (
+        <Modal open={open} onClose={onClose} aria-labelledby="ticket-modal-title">
+            <Box sx={modalStyle}>
+            {/* Header with Ticket ID */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: "#121212", p: 2 }}>
+                <Typography id="ticket-modal-title" variant="h6" component="h2" color="white">
+                    Ticket ID: {ticket.id}
+                </Typography>
+                <Box sx={getStatusStyles(ticket.status)}>
+                    {ticket.status}
+                </Box>
+            </Box>
+
+  
+            {/* Original Message Section */}
+            <Box sx={{ bgcolor: getBackgroundColor(originalMessageId), p: 2, my: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar src={ticket.message.author.avatar_url} alt={ticket.message.author.name} sx={{ marginRight: 2 }} />
+                    <Typography variant="subtitle2" color="white"><strong>{ticket.message.author.name}</strong></Typography>
+                </Box>
+                <Typography variant="body1" color="white">{ticket.message.content}</Typography>
+                <Typography variant="caption" color="white">{new Date(ticket.timestamp).toLocaleString()}</Typography>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                    <Button
+                        variant="contained"
+                        startIcon={<OpenInNewOutlinedIcon />}
+                        onClick={() => window.open(ticket.message.msg_url, '_blank')}
+                        sx={{ mt: 2 }}
+                    >
+                        View in Discord
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<DeleteIcon />}
+                        onClick={() => {
+                            onConfirmRemoveTicket(ticket.id);
+                        }}
+                        sx={{ mt: 2 }}
+                        color="error"
+                    >
+                    Remove Ticket
+                    </Button>
+                </Box>
+            </Box>
+    
+            {/* Context Messages List */}
+            <List>
+            {contextMessages.map((msg) => (
+                <ListItem 
+                key={msg.id} 
+                sx={{ 
+                    bgcolor: getBackgroundColor(msg.id), 
+                    mb: 1, 
+                    borderRadius: 1, 
+                    padding: 2,
+                }}
+                >
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                    <Avatar src={msg.author?.avatar_url} alt={msg.author?.name} sx={{ marginRight: 2 }} />
+                    {/* Use a Typography component for the author's name */}
+                    <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                        {msg.author?.name}
+                    </Typography>
+                    <Typography variant="body2" color="white">
+                        {msg.content}
+                    </Typography>
+                    </Box>
+                    <IconButton 
+                    href={msg.msg_url} 
+                    target="_blank" 
+                    sx={{ color: 'white' }}
+                    >
+                    <OpenInNewOutlinedIcon />
+                    </IconButton>
+                </Box>
+                </ListItem>
+            ))}
+            </List>
+            </Box>
+    </Modal>
+    );
 };
 
 const TicketsPage = () => {
@@ -25,31 +134,50 @@ const TicketsPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [openModal, setOpenModal] = useState(false);
+    const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+    const [ticketToDelete, setTicketToDelete] = useState(null);
+    const [contextMessages, setContextMessages] = useState([]);
+    const [totalNumberOfTickets, setTotalNumberOfTickets] = useState(0);
+
+    const fetchTickets = async (pageParam = page, rowsPerPageParam = rowsPerPage) => {
+        setLoading(true);
+        const url = `http://localhost:5001/tickets?page=${pageParam + 1}&limit=${rowsPerPageParam}`;
+      
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          setTotalNumberOfTickets(data.total); // Update the total number of tickets
+      
+          // Fetch messages for each ticket
+          const messages = await Promise.all(
+            data.tickets.map(ticket =>
+              fetch(`http://localhost:5001/messages/${ticket.msg_id}`).then(res => res.json())
+            )
+          );
+      
+          const ticketsWithMessages = data.tickets.map((ticket, index) => ({
+            ...ticket,
+            message: messages[index], // Now "messages" is defined
+          }));
+      
+          setTickets(ticketsWithMessages);
+        } catch (error) {
+          setError('Failed to fetch tickets');
+          console.error('Error fetching tickets:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
     useEffect(() => {
-        setLoading(true);
-        fetch(`http://localhost:5001/tickets?page=${page}&limit=20`)
-        .then(response => response.json())
-        .then(tickets => {
-            // Fetch message data for each ticket
-            Promise.all(tickets.map(ticket => 
-            fetch(`http://localhost:5001/messages/${ticket.msg_id}`).then(res => res.json())
-            )).then(messages => {
-            // Combine ticket data with message data
-            const ticketsWithMessages = tickets.map((ticket, index) => ({
-                ...ticket,
-                message: messages[index]
-            }));
-            setTickets(ticketsWithMessages);
-            setLoading(false);
-            });
-        })
-        .catch(err => {
-            setError('Failed to fetch tickets');
-            setLoading(false);
-        });
-    }, [page]);
+        fetchTickets();
+    }, [page, rowsPerPage]);
 
     useEffect(() => {
         if (selectedTicketId) {
@@ -68,50 +196,79 @@ const TicketsPage = () => {
         }
     }, [selectedTicketId]);
 
-    if (loading) {
-        return <CircularProgress />;
-    }
-
-    if (error) {
-        return <Typography color="error">{error}</Typography>;
-    }
-
-    const handleNextPage = () => {
-        setPage((prevPage) => prevPage + 1);
-      };
-      
-      const handlePreviousPage = () => {
-        setPage((prevPage) => Math.max(prevPage - 1, 1));
-      };
-
-    const handleListItemClick = (ticketId) => {
-        setSelectedTicketId(ticketId);
-    };
-
     const handleSearchChange = (event) => {
         setSearchQuery(event.target.value);
     };
 
-    const handleRemoveTicket = async () => {
-        if (selectedTicketId) {
-            try {
-                const response = await fetch(`http://localhost:5001/tickets/${selectedTicketId}`, {
-                    method: 'DELETE',
-                });
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+        fetchTickets(newPage, rowsPerPage);
+    };
+    
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+        fetchTickets(0, event.target.value);
+    };
+    
+    const handleOpenModal = (ticketId) => {
+        setSelectedTicketId(ticketId);
+        setOpenModal(true);
+    };
+    
+    const handleCloseModal = () => {
+        setOpenModal(false);
+    };
 
-                if (!response.ok) {
-                    throw new Error('Failed to delete the ticket');
-                }
+    const handleRemoveTicket = async (ticketId) => {
+        try {
+            const response = await fetch(`http://localhost:5001/tickets/${ticketId}`, {
+                method: 'DELETE',
+            });
 
-                // Update the tickets state to remove the deleted ticket
-                const updatedTickets = tickets.filter(ticket => ticket.id !== selectedTicketId);
-                setTickets(updatedTickets);
-
-                setSelectedTicketId(null);
-                setTicketDetails(null);
-            } catch (error) {
-                setError(error.message);
+            if (!response.ok) {
+                throw new Error('Failed to delete the ticket');
             }
+            await fetchTickets();
+
+            setSelectedTicketId(null);
+            setTicketDetails(null);
+            setOpenModal(false);
+        } catch (error) {
+            setError(error.message);
+            console.error('Error deleting ticket:', error);
+        }
+    };
+
+    const handleConfirmDelete = (ticketId) => {
+        setTicketToDelete(ticketId);
+        setOpenConfirmDialog(true);
+    };
+    
+    const handleDelete = async () => {
+        if (ticketToDelete) {
+            await handleRemoveTicket(ticketToDelete);
+            setOpenConfirmDialog(false);
+            setOpenModal(false);
+        }
+    };
+    
+    const handleCloseConfirmDialog = () => {
+        setOpenConfirmDialog(false);
+    };
+
+    const handleRowClick = async (ticketId) => {
+        const ticketResponse = await fetch(`http://localhost:5001/tickets/${ticketId}`);
+        const fullTicket = await ticketResponse.json();
+      
+        if (fullTicket && fullTicket.message && fullTicket.message.author) {
+            setSelectedTicketId(fullTicket.id);
+            setTicketDetails(fullTicket);
+            const fetchedContextMessages = await fetchContextMessages(fullTicket.context_messages);
+            setContextMessages(fetchedContextMessages);
+            setOpenModal(true);
+        } else {
+            console.error('Ticket data is incomplete', fullTicket);
         }
     };
 
@@ -122,160 +279,128 @@ const TicketsPage = () => {
         return Promise.all(messagePromises);
     };
 
-    const renderTicketHighlight = (ticket) => {
-        const questionAuthor = ticket.message.author;
-        const questionTimestamp = new Date(ticket.timestamp).toLocaleString();
-    
+    const getStatusStyles = (status) => {
+        return {
+            bgcolor: status.toLowerCase() === 'open' ? 'red' : 'green',
+            color: 'white',
+            borderRadius: '16px',
+            padding: '3px 10px',
+            display: 'inline-block',
+            textTransform: 'capitalize',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+            ml: 2
+        };
+      };
+
+    const renderTicketsTable = () => {
+        if (loading) return <Typography>Loading...</Typography>;
+        if (!loading && tickets.length === 0) return <Typography>No tickets to display</Typography>;
+
         return (
-            <Box bgcolor="#353535" p={2} color="white">
-                <Typography variant="h5" component="h2">
-                    Ticket ID:  {ticketDetails.id}
-                </Typography>
-                <Box display="flex" alignItems="center" mb={2}>
-                    <Avatar src={questionAuthor.avatar_url} alt={questionAuthor.name} />
-                    <Box ml={2}>
-                        <Typography variant="subtitle1"><strong>{questionAuthor.name}</strong></Typography>
-                        <Typography variant="caption">{questionTimestamp}</Typography>
-                    </Box>
-                </Box>
-                <Typography variant="body1" mb={2}>{ticket.message.content}</Typography>
-                <Box display="flex" justifyContent="space-between">
-                    <Button 
-                      variant="contained" 
-                      color="primary"
-                      startIcon={<VisibilityIcon />}
-                      onClick={() => window.open(ticket.message.msg_url, '_blank')}
+        <TableContainer component={Paper}>
+            <Table sx={{ minWidth: 650 }} aria-label="tickets table">
+            <TableHead>
+                <TableRow>
+                <TableCell>Status</TableCell>
+                <TableCell>Author</TableCell>
+                <TableCell>Content</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell>Actions</TableCell>
+                </TableRow>
+            </TableHead>
+            <TableBody>
+                {tickets.map((ticket) => (
+                    <TableRow
+                        key={ticket.id}
+                        sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                        hover
+                        onClick={() => handleRowClick(ticket.id)}
+                        style={{ cursor: 'pointer' }}
                     >
-                      View in Discord
-                    </Button>
-                    <Button 
-                      variant="contained" 
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={handleRemoveTicket}
-                    >
-                      Remove Ticket
-                    </Button>
-                </Box>
-            </Box>
-        );
-    };
-    
-    const ScrollableBox = styled(Box)({
-        maxHeight: 'calc(100vh - 200px)',
-        overflowY: 'auto',
-        backgroundColor: '#1E1E1E',
-    });
-
-    const renderContextMessages = (contextMessages, ticketMsgId) => (
-        <ScrollableBox>
-          <Typography variant="h6" sx={{ color: 'white' }}>Message Thread</Typography>
-          {contextMessages.map((msg, index) => (
-            <Box key={index} display="flex" justifyContent="space-between" alignItems="center" my={2} p={2} bgcolor={msg.id === ticketMsgId ? "#464646" : "#353535"}>
-              <Box display="flex" alignItems="center">
-                <Avatar src={msg.author.avatar_url} alt={msg.author.name} sx={{ mr: 2 }} />
-                <Box>
-                  <Typography variant="subtitle2" fontWeight="bold">{msg.author.name}</Typography>
-                  <Typography variant="body2">{msg.content}</Typography>
-                </Box>
-              </Box>
-              <Typography variant="caption" sx={{ color: 'gray' }}>
-                {new Date(msg.timestamp).toLocaleString()}
-              </Typography>
-            </Box>
-          ))}
-        </ScrollableBox>
-    );
-
-    const renderTicketDetails = () => {
-        if (!selectedTicketId) {
-            return (
-                <Box
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    flexDirection="column"
-                    height="100%"
-                >
-                    <SentimentVerySatisfiedOutlinedIcon sx={{ fontSize: 60 }} />
-                    <Typography variant="h6">Please select a ticket</Typography>
-                </Box>
-            );
-        }
-
-        if (ticketDetails) {
-            return (
-                <Card raised>
-                    {renderTicketHighlight(ticketDetails)}
-                    {renderContextMessages(ticketDetails.contextMessages, ticketDetails.msg_id)}
-                </Card>
-            );
-        }
-        return <Typography variant="h5">Select a ticket to view details</Typography>;
+                        <TableCell component="th" scope="row">
+                            <Box sx={getStatusStyles(ticket.status)}>{ticket.status}</Box>
+                        </TableCell>
+                        <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar src={ticket.message.author.avatar_url} alt={ticket.message.author.name} sx={{ marginRight: 2 }} />
+                                <Typography variant="subtitle2"><strong>{ticket.message.author.name}</strong></Typography>
+                            </Box>
+                        </TableCell>
+                        <TableCell>{truncateMessage(ticket.message.content)}</TableCell>
+                        <TableCell>{new Date(ticket.timestamp).toLocaleString()}</TableCell>
+                        <TableCell>
+                            {/* Do not add the click event to the delete icon cell */}
+                            <IconButton href={ticket.message.msg_url} target="_blank">
+                                <OpenInNewOutlinedIcon />
+                            </IconButton>
+                            <IconButton onClick={(event) => {
+                                event.stopPropagation();
+                                handleConfirmDelete(ticket.id);
+                                }}>
+                                <DeleteIcon sx={{ color:'white'}}/>
+                            </IconButton>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            <TablePagination
+                component="div"
+                count={totalNumberOfTickets}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+        </TableContainer>
+        )
     };
 
     return (
-        <div style={{ display: 'flex', height: '100vh' }}>
-            {/* Sidebar */}
-            <div style={{ width: '30%', backgroundColor: 'black', color: 'white', display: 'flex', flexDirection: 'column' }}>
-                <Box display="flex" alignItems="center" padding={2}>
-                    <TextField
-                        fullWidth
-                        variant="outlined"
-                        color="primary"
-                        placeholder="Search..."
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        InputProps={{
-                            startAdornment: (
-                                <IconButton>
-                                    <SearchIcon />
-                                </IconButton>
-                            ),
-                        }}
-                    />
-                </Box>
-                {page > 1 && (
-                    <Box display="flex" justifyContent="center" pt={2}>
-                        <IconButton onClick={handlePreviousPage}>
-                            <ArrowDropUpOutlinedIcon />
-                        </IconButton>
-                    </Box>
-                )}
-                <List style={{ overflowY: 'auto', flexGrow: 1 }}>
-                {tickets.map(ticket => (
-                    <ListItem
-                    key={ticket.id}
-                    onClick={() => handleListItemClick(ticket.id)}
-                    style={{
-                        backgroundColor: selectedTicketId === ticket.id ? '#353535' : 'transparent',
-                        alignItems: 'flex-start'
-                    }}
-                    >
-                <Avatar src={ticket.message.author.avatar_url} alt={ticket.message.author.name} />
-                <Box sx={{ ml: 2 }}>
-                    <ListItemText
-                        primary={ticket.message.author.name}
-                        secondary={truncateMessage(ticket.message.content)}
-                        primaryTypographyProps={{ fontWeight: 'bold' }}
-                    />
-                </Box>
-                </ListItem>
-            ))}
-                <Box display="flex" justifyContent="center" alignItems="center">
-                    <IconButton onClick={handleNextPage}>
-                        <ArrowDropDownIcon />
-                    </IconButton>
-                </Box>
-            </List>
-        </div>
-
-      {/* Main Content */}
-      <div style={{ width: '70%' }}>
-        {renderTicketDetails()}
-      </div>
-    </div>
-  );
-};
+        <Box sx={{ width: '100%' }}>
+            {/* Search and filter bar */}
+            <Box sx={{ backgroundColor: 'blue', display: 'flex', alignItems: 'center', padding: 2 }}>
+                {/* Search and filter elements */}
+                <IconButton>
+                <SearchIcon />
+                </IconButton>
+                {/* Other filter elements */}
+            </Box>
+        
+            {/* Main table */}
+            {renderTicketsTable()}
+        
+            {/* Ticket details modal */}
+            <TicketModal
+                open={openModal}
+                onClose={handleCloseModal}
+                ticket={ticketDetails}
+                contextMessages={contextMessages}
+                onRemoveTicket={handleRemoveTicket}
+                onConfirmRemoveTicket={handleConfirmDelete}
+                getStatusStyles={getStatusStyles}
+            />
+            {/* Confirmation Dialog for Deleting a Ticket */}
+            <Dialog
+            open={openConfirmDialog}
+            onClose={handleCloseConfirmDialog}
+            aria-labelledby="alert-dialog-title"
+            >
+            <DialogTitle id="alert-dialog-title">
+                {"Are you sure you want to delete this ticket?"}
+            </DialogTitle>
+            <DialogActions>
+                <Button onClick={handleCloseConfirmDialog} color="primary">
+                Cancel
+                </Button>
+                <Button onClick={handleDelete} color="primary" autoFocus>
+                Delete
+                </Button>
+            </DialogActions>
+            </Dialog>
+        </Box>
+      );
+    };
 
 export default TicketsPage;

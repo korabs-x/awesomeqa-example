@@ -33,15 +33,15 @@ def get_ticket_repository() -> TicketRepository:
 async def root():
     return "OK"
 
-
 @app.get("/tickets")
 async def get_tickets(
         page: int = 1, 
         limit: int = 20,
         ticket_repository: TicketRepository = Depends(get_ticket_repository),
     ):
-    tickets = ticket_repository.get_tickets(page=page, limit=limit)
-    return JSONResponse(tickets, status_code=200)
+    tickets_slice = ticket_repository.get_tickets(page=page, limit=limit)
+    total_count = len(ticket_repository.tickets) # Get the total count of tickets
+    return JSONResponse({"tickets": tickets_slice, "total": total_count}, status_code=200)
 
 @app.get("/tickets/{ticket_id}")
 async def get_ticket(ticket_id: str, ticket_repository: TicketRepository = Depends(get_ticket_repository)):
