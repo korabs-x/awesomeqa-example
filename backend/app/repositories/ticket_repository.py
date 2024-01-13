@@ -1,6 +1,6 @@
 import json
 from typing import Optional
-
+from datetime import datetime
 
 class TicketRepository:
     def __init__(self, filepath: Optional[str] = None):
@@ -20,10 +20,26 @@ class TicketRepository:
         self.tickets = mock_data["tickets"]
         self.messages = {msg["id"]: msg for msg in mock_data["messages"]}
 
-    def get_tickets(self, page: int = 1, limit: int = 20) -> list[dict]:
+    def get_tickets(self, page: int = 1, limit: int = 20, username: str = None, status: str = None, start_date: str = None, end_date: str = None) -> list[dict]:
+        filtered_tickets = self.tickets
+
+        if username:
+            filtered_tickets = [ticket for ticket in filtered_tickets if username.lower() in self.messages[ticket["msg_id"]]["author"]["name"].lower()]
+
+        if status:
+            filtered_tickets = [ticket for ticket in filtered_tickets if ticket['status'].lower() == status.lower()]
+
+        if start_date and end_date:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+            filtered_tickets = [
+                ticket for ticket in filtered_tickets
+                if start_date_obj <= datetime.strptime(ticket['timestamp'].split(' ')[0], "%Y-%m-%d") <= end_date_obj
+            ]
+
         start = (page - 1) * limit
         end = start + limit
-        return self.tickets[start:end]
+        return filtered_tickets[start:end]
     
     def get_ticket_with_message(self, ticket_id: str) -> dict:
         ticket = next((t for t in self.tickets if t["id"] == ticket_id), None)

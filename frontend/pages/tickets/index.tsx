@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    Modal, Box, Typography, Avatar, Button, IconButton, TablePagination, List, ListItem, ListItemText
+    Modal, Box, Typography, Avatar, Button, IconButton, TablePagination, List, ListItem, TextField,
+    InputAdornment, useTheme, MenuItem
+    
 } from '@mui/material';
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -27,20 +29,20 @@ const TicketModal = ({ open, onClose, ticket, contextMessages, onRemoveTicket, o
     );
   
     const modalStyle = {
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: '75%',
-      bgcolor: 'background.paper',
-      boxShadow: 24,
-      p: 4,
-      overflow: 'auto',
-      maxHeight: '90%',
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '75%',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 4,
+        overflow: 'auto',
+        maxHeight: '90%',
     };
   
     const getBackgroundColor = (msgId) => {
-      return msgId === originalMessageId ? '#656565' : '#282828';
+        return msgId === originalMessageId ? '#656565' : '#282828';
     };
   
     return (
@@ -133,7 +135,6 @@ const TicketsPage = () => {
     const [ticketDetails, setTicketDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [openModal, setOpenModal] = useState(false);
@@ -141,43 +142,59 @@ const TicketsPage = () => {
     const [ticketToDelete, setTicketToDelete] = useState(null);
     const [contextMessages, setContextMessages] = useState([]);
     const [totalNumberOfTickets, setTotalNumberOfTickets] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterDate, setFilterDate] = useState(null);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
-    const fetchTickets = async (pageParam = page, rowsPerPageParam = rowsPerPage) => {
+    const theme = useTheme();
+
+    const fetchTickets = async () => {
         setLoading(true);
-        const url = `http://localhost:5001/tickets?page=${pageParam + 1}&limit=${rowsPerPageParam}`;
       
+        const params = new URLSearchParams();
+        params.set('page', (page + 1).toString());
+        params.set('limit', rowsPerPage.toString());
+
+        if (searchQuery) params.set('username', searchQuery);
+        if (filterStatus) params.set('status', filterStatus);
+        if (startDate) params.set('start_date', startDate);
+        if (endDate) params.set('end_date', endDate);
+      
+        const url = `http://localhost:5001/tickets?${params.toString()}`;
+    
         try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const data = await response.json();
-          setTotalNumberOfTickets(data.total); // Update the total number of tickets
-      
-          // Fetch messages for each ticket
-          const messages = await Promise.all(
-            data.tickets.map(ticket =>
-              fetch(`http://localhost:5001/messages/${ticket.msg_id}`).then(res => res.json())
-            )
-          );
-      
-          const ticketsWithMessages = data.tickets.map((ticket, index) => ({
-            ...ticket,
-            message: messages[index], // Now "messages" is defined
-          }));
-      
-          setTickets(ticketsWithMessages);
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setTotalNumberOfTickets(data.total);
+    
+            const messages = await Promise.all(
+                data.tickets.map(ticket =>
+                    fetch(`http://localhost:5001/messages/${ticket.msg_id}`).then(res => res.json())
+                )
+            );
+    
+            const ticketsWithMessages = data.tickets.map((ticket, index) => ({
+                ...ticket,
+                message: messages[index],
+            }));
+    
+            setTickets(ticketsWithMessages);
         } catch (error) {
-          setError('Failed to fetch tickets');
-          console.error('Error fetching tickets:', error);
+            setError('Failed to fetch tickets');
+            console.error('Error fetching tickets:', error);
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
-      };
+    };
 
     useEffect(() => {
         fetchTickets();
-    }, [page, rowsPerPage]);
+    }, [page, rowsPerPage, searchQuery, filterStatus, filterDate]);
 
     useEffect(() => {
         if (selectedTicketId) {
@@ -196,19 +213,15 @@ const TicketsPage = () => {
         }
     }, [selectedTicketId]);
 
-    const handleSearchChange = (event) => {
-        setSearchQuery(event.target.value);
-    };
-
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
-        fetchTickets(newPage, rowsPerPage);
+        fetchTickets();
     };
     
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
-        fetchTickets(0, event.target.value);
+        fetchTickets();
     };
     
     const handleOpenModal = (ticketId) => {
@@ -218,6 +231,23 @@ const TicketsPage = () => {
     
     const handleCloseModal = () => {
         setOpenModal(false);
+    };
+
+    const handleSearchChange = (event) => {
+        setSearchQuery(event.target.value);
+    };
+
+    const handleStatusChange = (event) => {
+        setFilterStatus(event.target.value);
+        fetchTickets();
+      };
+
+    const handleStartDateChange = (event) => {
+        setStartDate(event.target.value);
+    };
+      
+    const handleEndDateChange = (event) => {
+        setEndDate(event.target.value);
     };
 
     const handleRemoveTicket = async (ticketId) => {
@@ -279,6 +309,14 @@ const TicketsPage = () => {
         return Promise.all(messagePromises);
     };
 
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilterStatus('');
+        setStartDate('');
+        setEndDate('');
+        fetchTickets();
+    };
+
     const getStatusStyles = (status) => {
         return {
             bgcolor: status.toLowerCase() === 'open' ? 'red' : 'green',
@@ -291,7 +329,124 @@ const TicketsPage = () => {
             fontWeight: 'bold',
             ml: 2
         };
-      };
+    };
+    
+    const renderSearchBar = () => {
+        return (
+            <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 2,
+              background: '#121212',
+              borderRadius: '10px',
+              width: '100%',
+            }}
+          >
+            <TextField
+              label="Search"
+              variant="outlined"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                input: { color: 'white' },
+                label: { color: 'gray' },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: 'gray' },
+                  '&:hover fieldset': { borderColor: 'white' },
+                  '&.Mui-focused fieldset': { borderColor: 'white' },
+                },
+              }}
+            />
+            <TextField
+                select
+                label="Status"
+                value={filterStatus}
+                onChange={handleStatusChange}
+                variant="outlined"
+                sx={{
+                    input: { color: 'white' },
+                    label: { color: 'gray' },
+                    '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: 'gray' },
+                    '&:hover fieldset': { borderColor: 'white' },
+                    '&.Mui-focused fieldset': { borderColor: 'white' },
+                    },
+                    marginRight: theme.spacing(2),
+                    minWidth: 120
+                }}
+                >
+                {['', 'Open', 'Closed'].map((status) => (
+                    <MenuItem key={status} value={status}>
+                    {status || 'None'}
+                    </MenuItem>
+                ))}
+            </TextField>
+            <TextField
+                label="Start Date"
+                type="date"
+                value={startDate}
+                onChange={handleStartDateChange}
+                variant="outlined"
+                InputLabelProps={{
+                    shrink: true,
+                }}
+                sx={{
+                    marginRight: theme.spacing(2),
+                }}
+            />
+            <TextField
+                label="End Date"
+                type="date"
+                value={endDate}
+                onChange={handleEndDateChange}
+                variant="outlined"
+                InputLabelProps={{
+                    shrink: true,
+                }}
+                sx={{
+                    marginRight: theme.spacing(2),
+                }}
+            />
+            <Button 
+                onClick={fetchTickets}
+                sx={{
+                backgroundColor: '#6200EA',
+                color: 'white',
+                '&:hover': {
+                    backgroundColor: '#3700B3',
+                },
+                padding: theme.spacing(1, 4),
+                borderRadius: theme.shape.borderRadius,
+                }}
+            >
+                Apply
+            </Button>
+            <Button
+                onClick={handleClearFilters}
+                sx={{
+                    backgroundColor: '#6200EA',
+                    color: 'white',
+                    '&:hover': {
+                        backgroundColor: '#3700B3',
+                    },
+                    padding: theme.spacing(1, 4),
+                    borderRadius: theme.shape.borderRadius,
+                }}
+            >
+                Clear
+            </Button>
+          </Box>
+        );
+    };
 
     const renderTicketsTable = () => {
         if (loading) return <Typography>Loading...</Typography>;
@@ -330,7 +485,6 @@ const TicketsPage = () => {
                         <TableCell>{truncateMessage(ticket.message.content)}</TableCell>
                         <TableCell>{new Date(ticket.timestamp).toLocaleString()}</TableCell>
                         <TableCell>
-                            {/* Do not add the click event to the delete icon cell */}
                             <IconButton href={ticket.message.msg_url} target="_blank">
                                 <OpenInNewOutlinedIcon />
                             </IconButton>
@@ -360,12 +514,8 @@ const TicketsPage = () => {
     return (
         <Box sx={{ width: '100%' }}>
             {/* Search and filter bar */}
-            <Box sx={{ backgroundColor: 'blue', display: 'flex', alignItems: 'center', padding: 2 }}>
-                {/* Search and filter elements */}
-                <IconButton>
-                <SearchIcon />
-                </IconButton>
-                {/* Other filter elements */}
+            <Box sx={{ display: 'flex', alignItems: 'center', padding: 2, background: '#121212', borderRadius: '10px' }}>
+                {renderSearchBar()}
             </Box>
         
             {/* Main table */}
@@ -381,6 +531,7 @@ const TicketsPage = () => {
                 onConfirmRemoveTicket={handleConfirmDelete}
                 getStatusStyles={getStatusStyles}
             />
+
             {/* Confirmation Dialog for Deleting a Ticket */}
             <Dialog
             open={openConfirmDialog}
