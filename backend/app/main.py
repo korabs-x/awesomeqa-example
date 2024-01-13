@@ -37,10 +37,14 @@ async def root():
 async def get_tickets(
         page: int = 1, 
         limit: int = 20,
+        username: str = None,
+        status: str = None,
+        start_date: str = None,
+        end_date: str = None,
         ticket_repository: TicketRepository = Depends(get_ticket_repository),
     ):
-    tickets_slice = ticket_repository.get_tickets(page=page, limit=limit)
-    total_count = len(ticket_repository.tickets) # Get the total count of tickets
+    tickets_slice = ticket_repository.get_tickets(page=page, limit=limit, username=username, status=status, start_date=start_date, end_date=end_date)
+    total_count = len(ticket_repository.tickets)
     return JSONResponse({"tickets": tickets_slice, "total": total_count}, status_code=200)
 
 @app.get("/tickets/{ticket_id}")
