@@ -36,6 +36,11 @@ class TicketRepository:
                 ticket for ticket in filtered_tickets
                 if start_date_obj <= datetime.strptime(ticket['timestamp'].split(' ')[0], "%Y-%m-%d") <= end_date_obj
             ]
+        
+        for ticket in filtered_tickets:
+            message = self.messages.get(ticket["msg_id"])
+            if message:
+                ticket["message"] = message
 
         start = (page - 1) * limit
         end = start + limit
