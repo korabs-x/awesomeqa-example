@@ -14,6 +14,6 @@ Steps to setup the backend environment:
 
 1. Run `make setup`
 2. Run `make run`
-3. Open it: [http://localhost:3002](http://localhost:3002)
+3. Open it: [http://localhost:3000](http://localhost:3000)
 
 ### Happy coding 🎉
