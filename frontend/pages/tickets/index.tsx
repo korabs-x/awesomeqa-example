@@ -42,7 +42,8 @@ const Tickets: NextPage = () => {
         }).then(
             () => 
             {
-                setTickets(tickets.splice(activeIndex, 1));
+                tickets.splice(activeIndex, 1);
+                setTickets(tickets);
                 if (activeIndex == tickets.length)
                 {
                     setActiveIndex(0);
