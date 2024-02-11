@@ -1,35 +1,28 @@
 import * as React from "react";
 import { NextPage } from "next";
-import Box from "@mui/material/Box";
-import Grid from "@mui/material/Grid";
-import { Button } from "@mui/material";
+import { Grid, Box } from "@mui/material";
 
-const Home: NextPage = () => {
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import HomeButton from "./home_button";
 
-  const handleClick = async () => {
-    console.log("clicked");
-  };
-
-  return (
-    <>
+const Home: NextPage = () => 
+   (
       <Box sx={{ flexGrow: 1, mt: 15, mb: 15 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleClick}
-                sx={{ width: "50%", height: "4rem", fontSize: "1.2rem" }}
-              >
-                Some other Button
-              </Button>
-            </Box>
+          <Grid item xs={4}>
+            <HomeButton icon={<LibraryBooksIcon/>} text='Knowledge Base' href='/knowledge_base' />
+          </Grid>
+          <Grid item xs={4}>  
+            <HomeButton icon={<SupportAgentIcon/>} text='Tickets' href='/tickets' />
+          </Grid>
+          <Grid item xs={4}>
+            <HomeButton icon={<LightbulbIcon/>} text='FAQ Insights' href='/faq_insights' />
           </Grid>
         </Grid>
       </Box>
-    </>
-  );
-};
+  )
+
 
 export default Home;
