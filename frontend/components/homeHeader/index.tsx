@@ -6,7 +6,7 @@ const HomeHeader = () => {
       <Box sx={{ border: 1, justifyContent: "center", mt: 5, borderRadius: 2, padding: 1 }}>
         <Box sx={{ display: "flex", justifyContent: "center" }}>
           <Typography variant="h2" component="div">
-            Awesome tech challenge
+            Demo App
           </Typography>
         </Box>
       </Box>
