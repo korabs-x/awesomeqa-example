@@ -1,4 +1,4 @@
-# Demo App
+# Awesome ticket challenge
 
 ### Backend
 
