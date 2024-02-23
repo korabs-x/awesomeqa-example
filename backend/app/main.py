@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.repositories.ticket_repository import TicketRepository
 from .routers import author_router, message_router, ticket_router
@@ -7,6 +8,15 @@ from .routers import author_router, message_router, ticket_router
 from .config import TICKET_FILEPATH
 
 app = FastAPI()
+
+# CORS settings
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
 
 app.include_router(author_router.router)
 app.include_router(ticket_router.router)
