@@ -150,7 +150,7 @@ const handleItemClick = (id) => {
       url += `&status=${value}`;
     }
     if (author === "human" || author === "bot") {
-      url += `&author=${author}`;
+      url += `&author_type=${author}`;
     }
     console.log("url", url);
 
@@ -178,7 +178,7 @@ const handleItemClick = (id) => {
       url += `&status=${status}`;
     }
     if (value === "human" || value === "bot") {
-      url += `&author=${value}`;
+      url += `&author_type=${value}`;
     }
     console.log("url", url);
 
@@ -203,7 +203,7 @@ const handleItemClick = (id) => {
       url += `&status=${status}`;
     }
     if (author === "human" || author === "bot") {
-      url += `&author=${author}`;
+      url += `&author_type=${author}`;
     }
     console.log("url", url);
 
@@ -248,7 +248,7 @@ const handleItemClick = (id) => {
       url += `&status=${status}`;
     }
     if (author === "human" || author === "bot") {
-      url += `&author=${author}`;
+      url += `&author_type=${author}`;
     }
     console.log("url", url);
 
@@ -429,7 +429,7 @@ const handleItemClick = (id) => {
                               className="time"
                               style={{ fontSize: "60%", opacity: 0.5 }}
                             >
-                              {` ${date} ${month} ${year}`}
+                              {` ${date} ${month} ${year} at ${formattedTime}`}
                             </span>
 
                           </Typography>
